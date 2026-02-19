@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 import tensorflow as tf
+from pathlib import Path
 
 st.set_page_config(page_title="Mineral Classifier", layout="centered")
 st.title("Mineral Classifier")
@@ -12,7 +13,20 @@ IMG_SIZE = (384, 384)
 
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("final_best_model.keras", compile=False)
+    app_dir = Path(__file__).resolve().parent
+    model_path = app_dir / "final_best_model.keras"
+
+    if not model_path.exists():
+        files = sorted([p.name for p in app_dir.iterdir()])
+        st.error(
+            "Model file not found. Expected file at: "
+            f"{model_path}\n\n"
+            f"App directory: {app_dir}\n"
+            f"Files present: {files}"
+        )
+        st.stop()
+
+    return tf.keras.models.load_model(model_path, compile=False)
 
 
 def preprocess_image(image: Image.Image):
