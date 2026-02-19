@@ -14,19 +14,16 @@ IMG_SIZE = (384, 384)
 @st.cache_resource
 def load_model():
     app_dir = Path(__file__).resolve().parent
-    model_path = app_dir / "final_best_model.keras"
+    keras_path = app_dir / "final_best_model.keras"
+    h5_path = app_dir / "final_best_model.h5"
 
-    if not model_path.exists():
-        files = sorted([p.name for p in app_dir.iterdir()])
-        st.error(
-            "Model file not found. Expected file at: "
-            f"{model_path}\n\n"
-            f"App directory: {app_dir}\n"
-            f"Files present: {files}"
-        )
-        st.stop()
+    if keras_path.exists():
+        return tf.keras.models.load_model(str(keras_path), compile=False)
+    if h5_path.exists():
+        return tf.keras.models.load_model(str(h5_path), compile=False)
 
-    return tf.keras.models.load_model(model_path, compile=False)
+    raise FileNotFoundError(
+        f"No model file found at {keras_path} or {h5_path}")
 
 
 def preprocess_image(image: Image.Image):
