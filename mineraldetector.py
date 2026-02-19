@@ -11,7 +11,7 @@ IMG_SIZE = (384, 384)
 
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("final_best_model.keras", compile=False)
+    return tf.keras.models.load_model("final_best_model.h5", compile=False, safe_mode=False)
 
 
 def preprocess_image(image: Image.Image):
