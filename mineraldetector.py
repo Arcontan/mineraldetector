@@ -14,8 +14,8 @@ IMG_SIZE = (384, 384)
 def load_model():
     app_dir = Path(__file__).resolve().parent
     candidate_paths = [
-        app_dir / "final_best_model.keras",
         app_dir / "final_best_model.h5",
+        app_dir / "final_best_model.keras",
     ]
 
     try:
@@ -35,7 +35,7 @@ def load_model():
                 raise RuntimeError(
                     "Model deserialization failed due to Python-version/Lambda incompatibility. "
                     "This model was saved with Lambda layers; deploy with a compatible Python runtime "
-                    "(recommended: 3.11) or re-export the model without Lambda layers."
+                    "(recommended: Python 3.9 + TensorFlow 2.10.1) or re-export the model without Lambda layers."
                 ) from exc
             raise
 
