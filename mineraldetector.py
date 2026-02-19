@@ -10,26 +10,58 @@ st.title("Mineral Classifier")
 CLASS_NAMES = ["azurite", "copper", "malachite", "pyrite", "wulfenite"]
 IMG_SIZE = (384, 384)
 
-
 @st.cache_resource
 def load_model():
     app_dir = Path(__file__).resolve().parent
-    keras_path = app_dir / "final_best_model.keras"
-    h5_path = app_dir / "final_best_model.h5"
+    candidate_paths = [
+        app_dir / "final_best_model.keras",
+        app_dir / "final_best_model.h5",
+    ]
+
+    try:
+        import keras
+        keras.config.enable_unsafe_deserialization()
+    except Exception:
+        pass
 
     def _load(path: Path):
         try:
             return tf.keras.models.load_model(str(path), compile=False, safe_mode=False)
         except TypeError:
             return tf.keras.models.load_model(str(path), compile=False)
+        except Exception as exc:
+            msg = str(exc)
+            if "bad marshal data" in msg or "Lambda" in msg:
+                raise RuntimeError(
+                    "Model deserialization failed due to Python-version/Lambda incompatibility. "
+                    "This model was saved with Lambda layers; deploy with a compatible Python runtime "
+                    "(recommended: 3.11) or re-export the model without Lambda layers."
+                ) from exc
+            raise
 
-    if keras_path.exists():
-        return _load(keras_path)
-    if h5_path.exists():
-        return _load(h5_path)
+    errors = []
+    for path in candidate_paths:
+        if not path.exists():
+            continue
+        try:
+            return _load(path)
+        except Exception as exc:
+            errors.append(f"{path.name}: {exc}")
+
+    available_files = sorted([p.name for p in app_dir.iterdir()])
+    if errors:
+        raise RuntimeError(
+            "Found model file(s), but failed to load all candidates.\n"
+            f"Tried: {[p.name for p in candidate_paths]}\n"
+            f"Errors: {errors}\n"
+            f"Files in app directory: {available_files}"
+        )
 
     raise FileNotFoundError(
-        f"No model file found at {keras_path} or {h5_path}")
+        "No model file found. "
+        f"Expected one of: {[p.name for p in candidate_paths]}\n"
+        f"Files in app directory: {available_files}"
+    )
 
 
 def preprocess_image(image: Image.Image):
