@@ -17,10 +17,16 @@ def load_model():
     keras_path = app_dir / "final_best_model.keras"
     h5_path = app_dir / "final_best_model.h5"
 
+    def _load(path: Path):
+        try:
+            return tf.keras.models.load_model(str(path), compile=False, safe_mode=False)
+        except TypeError:
+            return tf.keras.models.load_model(str(path), compile=False)
+
     if keras_path.exists():
-        return tf.keras.models.load_model(str(keras_path), compile=False)
+        return _load(keras_path)
     if h5_path.exists():
-        return tf.keras.models.load_model(str(h5_path), compile=False)
+        return _load(h5_path)
 
     raise FileNotFoundError(
         f"No model file found at {keras_path} or {h5_path}")
