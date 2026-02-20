@@ -8,20 +8,31 @@ st.title("Mineral Classifier")
 
 CLASS_NAMES = ["azurite", "copper", "malachite", "pyrite", "wulfenite"]
 IMG_SIZE = (384, 384)
+MODEL_DIR = "final_best_model_savedmodel"
 
 @st.cache_resource
 def load_model():
-    model_dir = "final_best_model_savedmodel"
-    if not tf.io.gfile.exists(model_dir):
+    if not tf.io.gfile.exists(MODEL_DIR):
         raise FileNotFoundError(
-            f"SavedModel directory not found: {model_dir}. "
+            f"SavedModel directory not found: {MODEL_DIR}. "
             "Export and upload it before deploying."
         )
+    try:
+        loaded = tf.saved_model.load(MODEL_DIR)
+    except AttributeError as exc:
+        if "add_slot" in str(exc):
+            raise RuntimeError(
+                "SavedModel contains optimizer slot state that is incompatible with this runtime. "
+                "Re-export from training notebook with: "
+                "final_best_model.save('final_best_model_savedmodel', save_format='tf', include_optimizer=False)"
+            ) from exc
+        raise
 
-    loaded = tf.saved_model.load(model_dir)
     serving_fn = loaded.signatures.get("serving_default")
+    if serving_fn is None and loaded.signatures:
+        serving_fn = next(iter(loaded.signatures.values()))
     if serving_fn is None:
-        raise ValueError("SavedModel has no 'serving_default' signature")
+        raise ValueError("SavedModel has no callable signatures")
     return serving_fn
 
 
@@ -39,7 +50,17 @@ def preprocess_image(image: Image.Image):
     return arr
 
 
-model = load_model()
+try:
+    model = load_model()
+except Exception as e:
+    st.error("Model failed to load.")
+    st.exception(e)
+    st.info(
+        "Re-export from notebook using: "
+        "final_best_model.save('final_best_model_savedmodel', save_format='tf', include_optimizer=False)"
+    )
+    st.stop()
+
 uploaded = st.file_uploader("Upload mineral image", type=[
                             "jpg", "jpeg", "png", "webp"])
 
