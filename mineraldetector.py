@@ -11,7 +11,25 @@ IMG_SIZE = (384, 384)
 
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("final_best_model.h5", compile=False, safe_mode=False)
+    model_dir = "final_best_model_savedmodel"
+    if not tf.io.gfile.exists(model_dir):
+        raise FileNotFoundError(
+            f"SavedModel directory not found: {model_dir}. "
+            "Export and upload it before deploying."
+        )
+
+    loaded = tf.saved_model.load(model_dir)
+    serving_fn = loaded.signatures.get("serving_default")
+    if serving_fn is None:
+        raise ValueError("SavedModel has no 'serving_default' signature")
+    return serving_fn
+
+
+def predict_probs(serving_fn, x: np.ndarray):
+    outputs = serving_fn(tf.convert_to_tensor(x, dtype=tf.float32))
+    first_key = next(iter(outputs))
+    probs = outputs[first_key].numpy()[0]
+    return probs
 
 
 def preprocess_image(image: Image.Image):
@@ -30,7 +48,7 @@ if uploaded is not None:
     st.image(image, caption="Uploaded image", use_container_width=True)
 
     x = preprocess_image(image)
-    probs = model.predict(x, verbose=0)[0]
+    probs = predict_probs(model, x)
     pred_idx = int(np.argmax(probs))
 
     st.subheader(f"Prediction: {CLASS_NAMES[pred_idx]}")
